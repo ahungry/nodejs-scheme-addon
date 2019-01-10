@@ -33,6 +33,7 @@ namespace demo {
 
   static Nan::CopyablePersistentTraits<v8::Function>::CopyablePersistent _cb;
   char _cb_arg1[100];
+  char reg[100];
 
   // https://stackoverflow.com/questions/36987273/callback-nodejs-javascript-function-from-multithreaded-c-addon
   uv_async_t async; // keep this instance around for as long as we might need to do the periodic callback
@@ -103,6 +104,21 @@ namespace demo {
     return scm_from_utf8_string ("Good");
   }
 
+  static SCM
+  my_get_register ()
+  {
+    return scm_from_utf8_string (reg);
+  }
+
+  static SCM
+  my_set_register (SCM val)
+  {
+    char* valc = scm_to_stringn (val, NULL, "ascii", SCM_FAILED_CONVERSION_ESCAPE_SEQUENCE);
+    strcpy (reg, valc);
+
+    return scm_from_utf8_string (reg);
+  }
+
   static void*
   guile_eval (void* data)
   {
@@ -114,6 +130,8 @@ namespace demo {
 
     scm_c_define_gsubr ("my-fn", 1, 5, 0, (void*) &my_fn);
     scm_c_define_gsubr ("my-sum", 2, 0, 0, (void*) &my_sum);
+    scm_c_define_gsubr ("my-set-register", 1, 0, 0, (void*) &my_set_register);
+    scm_c_define_gsubr ("my-get-register", 0, 0, 0, (void*) &my_get_register);
 
     return scm_c_eval_string (eval);
   }
@@ -138,6 +156,66 @@ namespace demo {
                            "hello world",
                            NewStringType::kNormal).ToLocalChecked () };
     cb->Call (context, Null (isolate), argc, argv).ToLocalChecked ();
+  }
+
+  void
+  GetRegister (const Nan::FunctionCallbackInfo<Value>& args)
+  {
+    Isolate* isolate = args.GetIsolate();
+
+    args.GetReturnValue ()
+      .Set (String::NewFromUtf8
+           (isolate, reg, NewStringType::kNormal).ToLocalChecked ());
+  }
+
+  void
+  SetRegister (const Nan::FunctionCallbackInfo<Value>& args)
+  {
+    Isolate* isolate = args.GetIsolate();
+
+    if (args.Length () < 1)
+      {
+        // Throw an Error that is passed back to JavaScript
+        isolate->ThrowException
+          (Exception::TypeError
+           (String::NewFromUtf8
+            (isolate,
+             "Wrong number of arguments",
+             NewStringType::kNormal).ToLocalChecked ()));
+        return;
+      }
+
+    // Check the argument types
+    if (!args[0]->IsString ())
+      {
+        isolate->ThrowException
+          (Exception::TypeError
+           (String::NewFromUtf8
+            (isolate,
+             "Wrong argument type - expected a string.",
+             NewStringType::kNormal).ToLocalChecked ()));
+
+        return;
+      }
+
+    // https://nodeaddons.com/
+    // wrap the string with v8's string type
+    v8::String::Utf8Value val(args[0]->ToString());
+
+    // use it as a standard C++ string
+    std::string str (*val);
+
+    std::cout << "Received input: " << str << std::endl;
+
+    // Perform the operation
+    // const char* eval = "(number->string (+ 1 2 3))";
+    const char* eval = str.c_str ();
+
+    strcpy (reg, eval);
+
+    args.GetReturnValue ()
+      .Set (String::NewFromUtf8
+           (isolate, reg, NewStringType::kNormal).ToLocalChecked ());
   }
 
   void
@@ -255,6 +333,8 @@ namespace demo {
     Nan::SetMethod (exports, "scm_eval", Eval);
     Nan::SetMethod (exports, "cb", RunCallback);
     Nan::SetMethod (exports, "reg", RegisterCallback);
+    Nan::SetMethod (exports, "set_register", SetRegister);
+    Nan::SetMethod (exports, "get_register", GetRegister);
     uv_async_init(loop, &async, asyncmsg);
   }
 

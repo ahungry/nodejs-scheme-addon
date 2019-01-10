@@ -17,5 +17,8 @@ console.log(addon.reg((x) => console.log("I was called from scheme: ", x)))
 
 console.log(addon.scm_eval(scm))
 
+console.log(addon.set_register("REGISTER-TEST"))
+console.log(addon.get_register())
+
 // Stall it out
 setInterval(() => undefined, 500)
