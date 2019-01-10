@@ -32,6 +32,7 @@ namespace demo {
   }
 
   static Nan::CopyablePersistentTraits<v8::Function>::CopyablePersistent _cb;
+  char _cb_arg1[100];
 
   // https://stackoverflow.com/questions/36987273/callback-nodejs-javascript-function-from-multithreaded-c-addon
   uv_async_t async; // keep this instance around for as long as we might need to do the periodic callback
@@ -43,13 +44,16 @@ namespace demo {
     //    I.e. it's safe to callback to the CB we defined in node!
     Nan::HandleScope scope;
     v8::Isolate* isolate = v8::Isolate::GetCurrent ();
-    Local<Value> argv[] = { v8::String::NewFromUtf8 (isolate, "Hello world") };
-
+    Local<Value> argv[] = { v8::String::NewFromUtf8 (isolate,
+                                                     _cb_arg1
+                                                     // "Hello world"
+                                                     ) };
 
     Nan::AsyncResource ar ("blub");
     Nan::Callback callback (Nan::New(_cb));
     //ar.runInAsyncScope(Nan::GetCurrentContext ()->Global (), Nan::New(_cb), argc, argv); // 0,0 for unary
-    callback.Call(0, 0, &ar);
+    // callback.Call(0, 0, &ar);
+    callback.Call(1, argv, &ar);
 
     // cbPeriodic->Call(1, argv);
   }
@@ -62,6 +66,9 @@ namespace demo {
     char* cs1 = scm_to_stringn (s1, NULL, "ascii", SCM_FAILED_CONVERSION_ESCAPE_SEQUENCE);
 
     std::cout << "Call my-fn as: " << namen << cs1 << std::endl;
+
+    // Lets shove the result somewhere
+    strcpy(_cb_arg1, cs1);
 
     // It crashes if I call it here from the REPL
     // const unsigned argc = 1;
@@ -87,6 +94,9 @@ namespace demo {
     // Set it up for use next time.
     // _cb.Reset ();
 
+    // TODO: Should we make this bi-directional?  So our string is the result
+    // of the call somehow?  Seems very tricky, maybe keep it to side-effect inducing
+    // or stack another cb that will call a function in here and set it to pass the val
     return scm_from_utf8_string ("Good");
   }
 
