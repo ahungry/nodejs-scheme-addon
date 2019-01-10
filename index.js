@@ -15,10 +15,13 @@ addon.cb((msg) => console.log('Callback message was: ', msg))
 //console.log(addon.eval("(number->string (+ (my-sum 100 100) (+ 1 2 3 4 5)))"))
 console.log(addon.reg((x) => console.log("I was called from scheme: ", x)))
 
-console.log(addon.scm_eval(scm))
 
-console.log(addon.set_register("REGISTER-TEST"))
-console.log(addon.get_register())
+console.log("Setting register from node: ", addon.set_register("REGISTER-TEST"))
+console.log("Getting register from node: ", addon.get_register())
+
+console.log(addon.scm_eval(scm))
+console.log("Getting register from post-scm eval: ", addon.get_register())
+
 
 // Stall it out
 setInterval(() => undefined, 500)

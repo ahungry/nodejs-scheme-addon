@@ -10,8 +10,8 @@
 (my-fn "fake" "Greetings from inside your lisp implementation")
 (my-fn "fake" "I am still here...")
 
-(my-fn "fake" (my-get-register))
+(my-fn "fake" (string-append "MGR1: " (my-get-register)))
 (my-fn "fake" (my-set-register "SET-REGISTER-in-SCHEME"))
-(my-fn "fake" (my-get-register))
+(my-fn "fake" (string-append "MGR2: " (my-get-register)))
 
 (all-strings (my-sum  20 30))
