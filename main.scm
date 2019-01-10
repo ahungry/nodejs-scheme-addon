@@ -7,6 +7,6 @@
 (use-modules (system repl server))
 (spawn-server (make-tcp-server-socket #:port 37146))
 
-;; (my-fn "fake" "5")
+(my-fn "fake" "5")
 
 (all-strings (my-sum  20 30))

@@ -1,6 +1,7 @@
 // hello.cc
 // https://nodejs.org/api/addons.html#addons_c_addons
 #include <node.h>
+#include <nan.h>
 
 #include <string>
 #include <iostream>
@@ -30,9 +31,10 @@ namespace demo {
     return scm_from_double (x + y);
   }
 
-  Isolate* isolatePtr;
-  Local<Context> contextPtr;
-  Local<Function> cbPtr;
+  static Nan::CopyablePersistentTraits<v8::Function>::CopyablePersistent _cb;
+  // Isolate* isolatePtr;
+  // Local<Context> contextPtr;
+  // Local<Function> cbPtr;
 
   // https://stackoverflow.com/questions/38455816/calling-javascript-function-from-c-addon#43174441
   static SCM
@@ -43,16 +45,20 @@ namespace demo {
 
     std::cout << "Call my-fn as: " << namen << cs1 << std::endl;
 
-    Isolate* isolate = Isolate::GetCurrent ();// = argPtr.GetIsolate ();
-    Local<Context> context = isolate->GetCurrentContext ();
+    // Isolate* isolate = Isolate::GetCurrent ();// = argPtr.GetIsolate ();
+    // Local<Context> context = isolate->GetCurrentContext ();
 
-    const unsigned argc = 1;
-    Local<Value> argv[argc] =
-      {
-       String::NewFromUtf8(isolate,
-                           "LOL",
-                           NewStringType::kNormal).ToLocalChecked () };
-    cbPtr->Call (context, Null (isolate), argc, argv);
+    // const unsigned argc = 1;
+    // Local<Value> argv[argc] =
+    //   {
+    //    String::NewFromUtf8(isolate,
+    //                        "LOL",
+    //                        NewStringType::kNormal).ToLocalChecked () };
+    // cbPtr->Call (context, Null (isolate), argc, argv);
+
+    // Deprecated note, bla
+    Nan::MakeCallback (Nan::GetCurrentContext ()->Global (), Nan::New(_cb), 0, 0);
+    _cb.Reset ();
 
     return scm_from_utf8_string ("Good");
   }
@@ -72,28 +78,27 @@ namespace demo {
     return scm_c_eval_string (eval);
   }
 
-  void
-  RegisterCallback(const FunctionCallbackInfo<Value>& args)
+  // RegisterCallback(const FunctionCallbackInfo<Value>& args)
+  static void
+  RegisterCallback(const Nan::FunctionCallbackInfo<v8::Value>& info)
   {
-    Isolate* isolate = args.GetIsolate ();
-    Local<Context> context = isolate->GetCurrentContext ();
-    Local<Function> cb = Local<Function>::Cast (args[0]);
-    isolatePtr = isolate;
-    contextPtr = context;
-    cbPtr = cb;
-    const unsigned argc = 1;
-    Local<Value> argv[argc] =
-      {
-       String::NewFromUtf8(isolate,
-                           "hello world",
-                           NewStringType::kNormal).ToLocalChecked () };
+    _cb = Nan::Persistent<v8::Function>(info[0].As<v8::Function>());
+    // Isolate* isolate = args.GetIsolate ();
+    // Local<Context> context = isolate->GetCurrentContext ();
+    // Local<Function> cb = Local<Function>::Cast (args[0]);
+    // const unsigned argc = 1;
+    // Local<Value> argv[argc] =
+    //   {
+    //    String::NewFromUtf8(isolate,
+    //                        "hello world",
+    //                        NewStringType::kNormal).ToLocalChecked () };
     // May want to just shove this in a lambda for later
     // https://en.cppreference.com/w/cpp/language/lambda
     // cb->Call (context, Null (isolate), argc, argv).ToLocalChecked ();
   }
 
   void
-  RunCallback(const FunctionCallbackInfo<Value>& args)
+  RunCallback(const Nan::FunctionCallbackInfo<Value>& args)
   {
     Isolate* isolate = args.GetIsolate ();
     Local<Context> context = isolate->GetCurrentContext ();
@@ -108,7 +113,7 @@ namespace demo {
   }
 
   void
-  Eval (const FunctionCallbackInfo<Value>& args)
+  Eval (const Nan::FunctionCallbackInfo<Value>& args)
   {
     Isolate* isolate = args.GetIsolate();
 
@@ -168,7 +173,7 @@ namespace demo {
   }
 
   void
-  Method (const FunctionCallbackInfo<Value>& args)
+  Method (const Nan::FunctionCallbackInfo<Value>& args)
   {
     Isolate* isolate = args.GetIsolate();
     args.GetReturnValue ()
@@ -177,7 +182,7 @@ namespace demo {
   }
 
   void
-  Add (const FunctionCallbackInfo<Value>& args)
+  Add (const Nan::FunctionCallbackInfo<Value>& args)
   {
     Isolate* isolate = args.GetIsolate();
 
@@ -215,16 +220,26 @@ namespace demo {
     args.GetReturnValue ().Set (num);
   }
 
-  void
-  Initialize (Local<Object> exports)
+  // void
+  // Initialize (Local<Object> exports)
+  // {
+  //   NODE_SET_METHOD (exports, "hello", Method);
+  //   NODE_SET_METHOD (exports, "add", Add);
+  //   NODE_SET_METHOD (exports, "scm_eval", Eval);
+  //   NODE_SET_METHOD (exports, "cb", RunCallback);
+  //   NODE_SET_METHOD (exports, "reg", RegisterCallback);
+  // }
+
+  static void Init(v8::Local<v8::Object> exports, v8::Local<v8::Object> module)
   {
-    NODE_SET_METHOD (exports, "hello", Method);
-    NODE_SET_METHOD (exports, "add", Add);
-    NODE_SET_METHOD (exports, "scm_eval", Eval);
-    NODE_SET_METHOD (exports, "cb", RunCallback);
-    NODE_SET_METHOD (exports, "reg", RegisterCallback);
+    Nan::SetMethod (exports, "hello", Method);
+    Nan::SetMethod (exports, "add", Add);
+    Nan::SetMethod (exports, "scm_eval", Eval);
+    Nan::SetMethod (exports, "cb", RunCallback);
+    Nan::SetMethod (exports, "reg", RegisterCallback);
   }
 
-  NODE_MODULE (NODE_GYP_MODULE_NAME, Initialize)
+  NODE_MODULE (addon, Init)
+  // NODE_MODULE (NODE_GYP_MODULE_NAME, Initialize)
 
 }  // namespace demo
