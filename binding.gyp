@@ -7,7 +7,8 @@
       "target_name": "addon",
       "sources": [ "hello.cc" ],
       "include_dirs": [
-        "<@(guile_root)"
+        "<@(guile_root)",
+        "<!(node -e \"require('nan')\")"
       ],
       "link_settings": {
         "libraries": [
