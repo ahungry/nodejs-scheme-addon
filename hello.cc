@@ -2,6 +2,10 @@
 // https://nodejs.org/api/addons.html#addons_c_addons
 #include <node.h>
 
+#include <string>
+#include <iostream>
+#include <libguile.h>
+
 namespace demo {
 
   using v8::FunctionCallbackInfo;
@@ -13,6 +17,37 @@ namespace demo {
   using v8::Value;
   using v8::Exception;
   using v8::Number;
+
+  static void*
+  guile_eval (void* data)
+  {
+    // https://www.gnu.org/software/guile/manual/html_node/Fly-Evaluation.html
+    // const char* eval = ((char*) data);
+    const char* eval = *((char**) data);
+
+    std::cout << "Evaluation target: " << eval << std::endl;
+
+    // scm_c_define_gsubr ("my-fn", 1, 5, 0, (void*) &my_fn);
+
+    return scm_c_eval_string (eval);
+  }
+
+  void
+  Eval (const FunctionCallbackInfo<Value>& args)
+  {
+    Isolate* isolate = args.GetIsolate();
+
+    const char* eval = "(number->string (+ 1 2 3))";
+
+    std::cout << "About to eval: " << eval << std::endl;
+
+    SCM g = (SCM) scm_with_guile (&guile_eval, &eval);
+    char* result = scm_to_stringn (g, NULL, "ascii", SCM_FAILED_CONVERSION_ESCAPE_SEQUENCE);
+
+    args.GetReturnValue ()
+      .Set (String::NewFromUtf8
+           (isolate, result, NewStringType::kNormal).ToLocalChecked ());
+  }
 
   void
   Method (const FunctionCallbackInfo<Value>& args)
@@ -67,6 +102,7 @@ namespace demo {
   {
     NODE_SET_METHOD (exports, "hello", Method);
     NODE_SET_METHOD (exports, "add", Add);
+    NODE_SET_METHOD (exports, "eval", Eval);
   }
 
   NODE_MODULE (NODE_GYP_MODULE_NAME, Initialize)

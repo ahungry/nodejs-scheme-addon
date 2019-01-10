@@ -5,3 +5,6 @@ console.log(addon.hello())
 // Prints: 'world'
 
 console.log(addon.add(1, 2))
+
+
+console.log(addon.eval())
