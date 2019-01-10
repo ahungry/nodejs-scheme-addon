@@ -7,4 +7,4 @@ console.log(addon.hello())
 console.log(addon.add(1, 2))
 
 
-console.log(addon.eval("(number->string (+ 1 2 3 4 5))"))
+console.log(addon.eval("(number->string (+ (my-sum 100 100) (+ 1 2 3 4 5)))"))

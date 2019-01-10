@@ -18,6 +18,15 @@ namespace demo {
   using v8::Exception;
   using v8::Number;
 
+  static SCM
+  my_sum (SCM a, SCM b)
+  {
+    const double x = scm_to_double (a);
+    const double y = scm_to_double (b);
+
+    return scm_from_double (x + y);
+  }
+
   static void*
   guile_eval (void* data)
   {
@@ -28,6 +37,7 @@ namespace demo {
     std::cout << "Evaluation target: " << eval << std::endl;
 
     // scm_c_define_gsubr ("my-fn", 1, 5, 0, (void*) &my_fn);
+    scm_c_define_gsubr ("my-sum", 2, 0, 0, (void*) &my_sum);
 
     return scm_c_eval_string (eval);
   }
