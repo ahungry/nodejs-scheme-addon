@@ -97,6 +97,9 @@ namespace demo {
     // TODO: Should we make this bi-directional?  So our string is the result
     // of the call somehow?  Seems very tricky, maybe keep it to side-effect inducing
     // or stack another cb that will call a function in here and set it to pass the val
+    // Or, we could have node call some "set" to put data in a buffer/register we read from later.
+    // We could even return this content from the last buffer set as the result.
+
     return scm_from_utf8_string ("Good");
   }
 
