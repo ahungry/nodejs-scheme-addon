@@ -8,15 +8,18 @@
 
 namespace demo {
 
+  using v8::Context;
+  using v8::Exception;
+  using v8::Function;
   using v8::FunctionCallbackInfo;
   using v8::Isolate;
   using v8::Local;
   using v8::NewStringType;
+  using v8::Null;
+  using v8::Number;
   using v8::Object;
   using v8::String;
   using v8::Value;
-  using v8::Exception;
-  using v8::Number;
 
   static SCM
   my_sum (SCM a, SCM b)
@@ -25,6 +28,33 @@ namespace demo {
     const double y = scm_to_double (b);
 
     return scm_from_double (x + y);
+  }
+
+  Isolate* isolatePtr;
+  Local<Context> contextPtr;
+  Local<Function> cbPtr;
+
+  // https://stackoverflow.com/questions/38455816/calling-javascript-function-from-c-addon#43174441
+  static SCM
+  my_fn (SCM name, SCM s1)
+  {
+    char* namen = scm_to_stringn (name, NULL, "ascii", SCM_FAILED_CONVERSION_ESCAPE_SEQUENCE);
+    char* cs1 = scm_to_stringn (s1, NULL, "ascii", SCM_FAILED_CONVERSION_ESCAPE_SEQUENCE);
+
+    std::cout << "Call my-fn as: " << namen << cs1 << std::endl;
+
+    Isolate* isolate = Isolate::GetCurrent ();// = argPtr.GetIsolate ();
+    Local<Context> context = isolate->GetCurrentContext ();
+
+    const unsigned argc = 1;
+    Local<Value> argv[argc] =
+      {
+       String::NewFromUtf8(isolate,
+                           "LOL",
+                           NewStringType::kNormal).ToLocalChecked () };
+    cbPtr->Call (context, Null (isolate), argc, argv);
+
+    return scm_from_utf8_string ("Good");
   }
 
   static void*
@@ -36,10 +66,45 @@ namespace demo {
 
     std::cout << "Evaluation target: " << eval << std::endl;
 
-    // scm_c_define_gsubr ("my-fn", 1, 5, 0, (void*) &my_fn);
+    scm_c_define_gsubr ("my-fn", 1, 5, 0, (void*) &my_fn);
     scm_c_define_gsubr ("my-sum", 2, 0, 0, (void*) &my_sum);
 
     return scm_c_eval_string (eval);
+  }
+
+  void
+  RegisterCallback(const FunctionCallbackInfo<Value>& args)
+  {
+    Isolate* isolate = args.GetIsolate ();
+    Local<Context> context = isolate->GetCurrentContext ();
+    Local<Function> cb = Local<Function>::Cast (args[0]);
+    isolatePtr = isolate;
+    contextPtr = context;
+    cbPtr = cb;
+    const unsigned argc = 1;
+    Local<Value> argv[argc] =
+      {
+       String::NewFromUtf8(isolate,
+                           "hello world",
+                           NewStringType::kNormal).ToLocalChecked () };
+    // May want to just shove this in a lambda for later
+    // https://en.cppreference.com/w/cpp/language/lambda
+    // cb->Call (context, Null (isolate), argc, argv).ToLocalChecked ();
+  }
+
+  void
+  RunCallback(const FunctionCallbackInfo<Value>& args)
+  {
+    Isolate* isolate = args.GetIsolate ();
+    Local<Context> context = isolate->GetCurrentContext ();
+    Local<Function> cb = Local<Function>::Cast (args[0]);
+    const unsigned argc = 1;
+    Local<Value> argv[argc] =
+      {
+       String::NewFromUtf8(isolate,
+                           "hello world",
+                           NewStringType::kNormal).ToLocalChecked () };
+    cb->Call (context, Null (isolate), argc, argv).ToLocalChecked ();
   }
 
   void
@@ -155,7 +220,9 @@ namespace demo {
   {
     NODE_SET_METHOD (exports, "hello", Method);
     NODE_SET_METHOD (exports, "add", Add);
-    NODE_SET_METHOD (exports, "eval", Eval);
+    NODE_SET_METHOD (exports, "scm_eval", Eval);
+    NODE_SET_METHOD (exports, "cb", RunCallback);
+    NODE_SET_METHOD (exports, "reg", RegisterCallback);
   }
 
   NODE_MODULE (NODE_GYP_MODULE_NAME, Initialize)

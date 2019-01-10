@@ -10,8 +10,12 @@ console.log(addon.add(1, 2))
 const buf = fs.readFileSync('main.scm')
 const scm = buf.toString('ascii')
 
+addon.cb((msg) => console.log('Callback message was: ', msg))
+
 //console.log(addon.eval("(number->string (+ (my-sum 100 100) (+ 1 2 3 4 5)))"))
-console.log(addon.eval(scm))
+console.log(addon.reg((x) => console.log("I was called from scheme: ", x)))
+
+console.log(addon.scm_eval(scm))
 
 // Stall it out
 setInterval(() => undefined, 500)
