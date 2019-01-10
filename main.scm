@@ -8,5 +8,6 @@
 (spawn-server (make-tcp-server-socket #:port 37146))
 
 (my-fn "fake" "Greetings from inside your lisp implementation")
+(my-fn "fake" "I am still here...")
 
 (all-strings (my-sum  20 30))

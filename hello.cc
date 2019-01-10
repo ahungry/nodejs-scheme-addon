@@ -33,6 +33,27 @@ namespace demo {
 
   static Nan::CopyablePersistentTraits<v8::Function>::CopyablePersistent _cb;
 
+  // https://stackoverflow.com/questions/36987273/callback-nodejs-javascript-function-from-multithreaded-c-addon
+  uv_async_t async; // keep this instance around for as long as we might need to do the periodic callback
+  uv_loop_t* loop = uv_default_loop();
+
+  void asyncmsg (uv_async_t* handle)
+  {
+    // Called by UV in main thread after our worker thread calls uv_async_send()
+    //    I.e. it's safe to callback to the CB we defined in node!
+    Nan::HandleScope scope;
+    v8::Isolate* isolate = v8::Isolate::GetCurrent ();
+    Local<Value> argv[] = { v8::String::NewFromUtf8 (isolate, "Hello world") };
+
+
+    Nan::AsyncResource ar ("blub");
+    Nan::Callback callback (Nan::New(_cb));
+    //ar.runInAsyncScope(Nan::GetCurrentContext ()->Global (), Nan::New(_cb), argc, argv); // 0,0 for unary
+    callback.Call(0, 0, &ar);
+
+    // cbPeriodic->Call(1, argv);
+  }
+
   // https://stackoverflow.com/questions/38455816/calling-javascript-function-from-c-addon#43174441
   static SCM
   my_fn (SCM name, SCM s1)
@@ -42,17 +63,29 @@ namespace demo {
 
     std::cout << "Call my-fn as: " << namen << cs1 << std::endl;
 
-    const unsigned argc = 1;
-    Local<Value> argv[argc] =
-      { String::NewFromUtf8
-        (v8::Isolate::GetCurrent (),
-         cs1,
-         NewStringType::kNormal).ToLocalChecked () };
+    // It crashes if I call it here from the REPL
+    // const unsigned argc = 1;
+    // Local<Value> argv[argc] =
+    //   { String::NewFromUtf8
+    //     (v8::Isolate::GetCurrent (),
+    //      cs1,
+    //      NewStringType::kNormal).ToLocalChecked () };
 
     // Deprecated note, bla
     // https://github.com/nodejs/nan/blob/master/doc/node_misc.md
-    Nan::MakeCallback (Nan::GetCurrentContext ()->Global (), Nan::New(_cb), argc, argv); // 0,0 for unary
-    _cb.Reset ();
+    // Nan::MakeCallback (Nan::GetCurrentContext ()->Global (), Nan::New(_cb), argc, argv); // 0,0 for unary
+
+    std::cout << "About to call blub in the AR scope: " << std::endl;
+    // Nan::AsyncResource ar ("blub");
+    // Nan::Callback callback (Nan::New(_cb));
+    //ar.runInAsyncScope(Nan::GetCurrentContext ()->Global (), Nan::New(_cb), argc, argv); // 0,0 for unary
+    // callback.Call(0, 0, &ar);
+
+    uv_async_send(&async);
+
+
+    // Set it up for use next time.
+    // _cb.Reset ();
 
     return scm_from_utf8_string ("Good");
   }
@@ -209,6 +242,7 @@ namespace demo {
     Nan::SetMethod (exports, "scm_eval", Eval);
     Nan::SetMethod (exports, "cb", RunCallback);
     Nan::SetMethod (exports, "reg", RegisterCallback);
+    uv_async_init(loop, &async, asyncmsg);
   }
 
   NODE_MODULE (addon, Init)
