@@ -1,12 +1,12 @@
-all: build test
+all: node-gyp-config build test
 
 node-gyp-config:
 	node-gyp configure
 
-build: node-gyp-config
+build:
 	node-gyp build
 
-test:
+test: build
 	node index.js
 
 .PHONY: all test build node-gyp-config

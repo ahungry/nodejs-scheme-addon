@@ -7,4 +7,4 @@ console.log(addon.hello())
 console.log(addon.add(1, 2))
 
 
-console.log(addon.eval())
+console.log(addon.eval("(number->string (+ 1 2 3 4 5))"))

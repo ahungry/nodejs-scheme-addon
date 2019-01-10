@@ -37,12 +37,55 @@ namespace demo {
   {
     Isolate* isolate = args.GetIsolate();
 
-    const char* eval = "(number->string (+ 1 2 3))";
+    if (args.Length () < 1)
+      {
+        // Throw an Error that is passed back to JavaScript
+        isolate->ThrowException
+          (Exception::TypeError
+           (String::NewFromUtf8
+            (isolate,
+             "Wrong number of arguments",
+             NewStringType::kNormal).ToLocalChecked ()));
+        return;
+      }
+
+    // Check the argument types
+    if (!args[0]->IsString ())
+      {
+        isolate->ThrowException
+          (Exception::TypeError
+           (String::NewFromUtf8
+            (isolate,
+             "Wrong argument type - expected a string.",
+             NewStringType::kNormal).ToLocalChecked ()));
+
+        return;
+      }
+
+    // https://nodeaddons.com/
+    // wrap the string with v8's string type
+    v8::String::Utf8Value val(args[0]->ToString());
+
+    // use it as a standard C++ string
+    std::string str (*val);
+
+    std::cout << "Received input: " << str << std::endl;
+
+    // Perform the operation
+    // const char* eval = "(number->string (+ 1 2 3))";
+    const char* eval = str.c_str ();
 
     std::cout << "About to eval: " << eval << std::endl;
 
     SCM g = (SCM) scm_with_guile (&guile_eval, &eval);
     char* result = scm_to_stringn (g, NULL, "ascii", SCM_FAILED_CONVERSION_ESCAPE_SEQUENCE);
+
+    // double value = args[0].As<Number> ()->Value () + args[1].As<Number> ()->Value ();
+    // Local<Number> num = Number::New (isolate, value);
+
+    // Set the return value (using the passed in
+    // FunctionCallbackInfo<Value>&)
+    // args.GetReturnValue ().Set (num);
 
     args.GetReturnValue ()
       .Set (String::NewFromUtf8
