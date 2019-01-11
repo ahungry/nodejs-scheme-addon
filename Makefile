@@ -1,6 +1,9 @@
 all: node-gyp-config build test
 
-node-gyp-config:
+node_modules:
+	yarn install
+
+node-gyp-config: node_modules
 	node-gyp configure
 
 build:
