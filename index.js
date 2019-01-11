@@ -40,8 +40,8 @@ const scm_add = bufAdd.toString('ascii')
 addon.cb((msg) => console.log('Callback message was: ', msg))
 
 //console.log(addon.eval("(number->string (+ (my-sum 100 100) (+ 1 2 3 4 5)))"))
-//console.log(addon.reg((x) => console.log("I was called from scheme: ", x)))
-console.log(addon.reg(make_http))
+console.log(addon.reg((x) => console.log("I was called from scheme: ", x)))
+// console.log(addon.reg(make_http))
 
 
 console.log("Setting register from node: ", addon.set_register("REGISTER-TEST"))
@@ -51,14 +51,24 @@ console.log(addon.scm_eval(scm))
 console.log("Getting register from post-scm eval: ", addon.get_register())
 
 // Lets do something cooler here - lets run a web server.
-http.createServer(function (_req, res) {
+http.createServer(function (req, res) {
   // When we get inbound, we should look at request
   // and dispatch to the listening SCM server.
   // Well, around 4000 req/sec calling out to a fresh eval each time.  Not bad!
-  addon.set_register("5")
-  response = addon.scm_eval(scm_add)
-  res.writeHead(200, { 'Content-Type': 'text/plain' })
-  res.end(response)
+  console.log(req.url)
+
+  // Bind the response into scheme.
+  addon.reg(scm_res => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' })
+    res.end(scm_res)
+  })
+
+  // This is real safe!  Arbitrary code execution from a user input URL!
+  addon.set_register(`(my-fn "x" (all-strings (factorial ${req.url.slice(1)})))`)
+
+  // response = addon.get_register()
+  // res.writeHead(200, { 'Content-Type': 'text/plain' })
+  // res.end(response)
 }).listen(5000)
 
 // Stall it out
