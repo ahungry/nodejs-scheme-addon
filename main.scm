@@ -5,7 +5,11 @@
 
 ;; Uncomment this to run a REPL for Geiser to connect to
 (use-modules (system repl server))
-(spawn-server (make-tcp-server-socket #:port 37146))
+(catch #t
+  (lambda ()
+    (spawn-server (make-tcp-server-socket #:port 37146)))
+  (lambda (key . parameters)
+    #nil))
 
 (my-fn "fake" "Greetings from inside your lisp implementation")
 (my-fn "fake" "I am still here...")
@@ -29,7 +33,7 @@
 (define (fetch-with-pause)
   (await (my-fn "x" "y")))
 
-(all-strings (my-sum  20 30))
+(all-strings (my-sum 20 30))
 
 ;; (all-strings
 ;;  (fetch-with-pause))
